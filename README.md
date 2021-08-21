@@ -21,7 +21,7 @@ Installing `yamp` will give you access to it on the command-line. As an example,
 yamp river --out docs/api
 ```
 
-This will parse all the modules, classes, and docstrings and dump them in a format that MkDocs understands.
+This will parse all the modules, classes, and docstrings and dump them in a format that MkDocs understands. Typically, you would run this before calling `mkdocs build`.
 
 ## Alternatives
 
