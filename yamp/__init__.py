@@ -209,7 +209,7 @@ def print_docstring(obj, file, depth, linkifier):
             printf(md.line(f'???- note "{meth.name}"'))
 
             # Parse method docstring
-            docstring = utils.find_method_docstring(c=obj, meth=meth.name)
+            docstring = utils.find_method_docstring(klass=obj, method=meth.name)
             if not docstring:
                 continue
             meth_doc = FunctionDoc(func=None, doc=docstring)
@@ -275,7 +275,7 @@ def print_docstring(obj, file, depth, linkifier):
         printf(md.line("\n".join(doc["References"])))
 
 
-def print_module(mod, path, overview, linkifier, is_submodule=False):
+def print_module(mod, path, overview, linkifier, is_submodule=False, verbose=False):
 
     mod_name = mod.__name__.split(".")[-1]
 
@@ -306,7 +306,8 @@ def print_module(mod, path, overview, linkifier, is_submodule=False):
         print("\n**Classes**\n", file=overview)
 
     for _, c in classes:
-        print(f"{mod_name}.{c.__name__}")
+        if verbose:
+            print(f"{mod_name}.{c.__name__}")
 
         # Add the class to the overview
         slug = utils.snake_to_kebab(c.__name__)
@@ -331,7 +332,8 @@ def print_module(mod, path, overview, linkifier, is_submodule=False):
         print("\n**Functions**\n", file=overview)
 
     for _, f in funcs:
-        print(f"{mod_name}.{f.__name__}")
+        if verbose:
+            print(f"{mod_name}.{f.__name__}")
 
         # Add the function to the overview
         slug = utils.snake_to_kebab(f.__name__)
@@ -370,7 +372,7 @@ def print_module(mod, path, overview, linkifier, is_submodule=False):
     print("", file=overview)
 
 
-def print_library(library: str, output_dir: pathlib.Path):
+def print_library(library: str, output_dir: pathlib.Path, verbose=False):
 
     # Create a directory for the API reference
     shutil.rmtree(output_dir, ignore_errors=True)
@@ -388,5 +390,12 @@ def print_library(library: str, output_dir: pathlib.Path):
     ):
         if mod_name.startswith("_"):
             continue
-        print(mod_name)
-        print_module(mod, path=output_dir, overview=overview, linkifier=linkifier)
+        if verbose:
+            print(mod_name)
+        print_module(
+            mod,
+            path=output_dir,
+            overview=overview,
+            linkifier=linkifier,
+            verbose=verbose,
+        )
