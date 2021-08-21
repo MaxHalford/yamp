@@ -23,6 +23,6 @@ setup(
         "dev": ["black", "pytest"],
     },
     entry_points={
-        "console_scripts": ["yamp=yamp:cli"],
+        "console_scripts": ["yamp=yamp:cli_hook"],
     },
 )

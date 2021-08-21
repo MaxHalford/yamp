@@ -13,7 +13,9 @@ You should be able to use this with any Python version above or equal to 3.8.
 pip install git+https://github.com/MaxHalford/yamp
 ```
 
-This gives you access to `yamp` on the command-line. As an example, assuming you have [River](https://github.com/online-ml/river/) installed, you can do this:
+## Usage
+
+Installing `yamp` will give you access to it on the command-line. As an example, assuming you have [River](https://github.com/online-ml/river/) installed, you can do this:
 
 ```sh
 yamp river --out docs/api
