@@ -3,6 +3,7 @@ docs/api. The script scans through all the modules, classes, and functions. It p
 the __doc__ of each object and formats it so that MkDocs can process it in turn.
 
 """
+import argparse
 import functools
 import importlib
 import inspect
@@ -399,3 +400,20 @@ def print_library(library: str, output_dir: pathlib.Path, verbose=False):
             linkifier=linkifier,
             verbose=verbose,
         )
+
+
+def cli_hook():
+    """Command-line interface."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "library",
+        nargs="?",
+        help="the library to document",
+    )
+    parser.add_argument("--out", default="docs/api", help="where to dump the docs")
+    parser.add_argument("--verbose", dest="verbose", action="store_true")
+    parser.set_defaults(verbose=False)
+    args = parser.parse_args()
+    print_library(
+        library=args.library, output_dir=pathlib.Path(args.out), verbose=args.verbose
+    )

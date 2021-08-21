@@ -22,4 +22,7 @@ setup(
     extras_require={
         "dev": ["black", "pytest"],
     },
+    entry_points={
+        "console_scripts": ["yamp=yamp:cli"],
+    },
 )
