@@ -23,6 +23,51 @@ yamp river --out docs/api
 
 This will parse all the modules, classes, and docstrings and dump them in a format that MkDocs understands. Typically, you would run this before calling `mkdocs build`.
 
+Naturally, you can run `yamp -h` to see what options are available.
+## Style guide
+
+Again, `yamp` is opinionated and has its own style. As a general rule, the docstrings are expected the `numpydoc style guide`. There are just a few extra rules to take into account.
+
+For examples, you may look at [River's source code](https://github.com/online-ml/river/tree/master/river) and check the docstrings therein.
+
+### Parameter typing
+
+Parameter types should not documented. Instead, they are deduced from the type hints.
+
+**❌ Bad**
+
+```py
+class Animal:
+    """
+
+    Parameters
+    ----------
+    name: str
+        The animal's name.
+
+    """
+
+    def __init__(self, name):
+        self.name = name
+```
+
+**✅ Good**
+
+```py
+class Animal:
+    """
+
+    Parameters
+    ----------
+    name
+        The animal's name.
+
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+```
+
 ## Alternatives
 
 - [mkdocstrings](https://github.com/mkdocstrings/mkdocstrings)

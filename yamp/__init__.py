@@ -387,7 +387,7 @@ def print_library(library: str, output_dir: pathlib.Path, verbose=False):
     linkifier = Linkifier()
 
     for mod_name, mod in inspect.getmembers(
-        importlib.import_module("river"), inspect.ismodule
+        importlib.import_module(library), inspect.ismodule
     ):
         if mod_name.startswith("_"):
             continue
