@@ -26,13 +26,13 @@ This will parse all the modules, classes, and docstrings and dump them in a form
 Naturally, you can run `yamp -h` to see what options are available.
 ## Style guide
 
-Again, `yamp` is opinionated and has its own style. As a general rule, the docstrings are expected the `numpydoc style guide`. There are just a few extra rules to take into account.
+As a general rule, the docstrings are expected the `numpydoc style guide`. There are just a few extra rules to take into account.
 
 For examples, you may look at [River's source code](https://github.com/online-ml/river/tree/master/river) and check the docstrings therein.
 
 ### Parameter typing
 
-Parameter types should not documented. Instead, they are deduced from the type hints.
+Parameter types should not be documented. Instead, they are deduced from the type hints.
 
 **❌ Bad**
 
@@ -66,6 +66,63 @@ class Animal:
 
     def __init__(self, name: str):
         self.name = name
+```
+
+### Type hints and docstrings are inherited
+
+If you have a base class with a type hinted method, then you do not have to type hint the method of the child class. The type hints will be inherited. The same goes for docstrings. We found this very useful in River because we have a few base classes that are inherited many times. This saves us from having to copy/paste docstrings all over the place.
+
+**❌ Bad**
+
+```py
+import abc
+
+class Animal(abc.ABC):
+
+    @abc.abstractmethod
+    def sound(self) -> str:
+        """Make some noise.
+
+        Returns
+        -------
+        The noise.
+
+        """
+
+class Dog(Animal):
+
+    def sound(self) -> str:
+        """Make some noise.
+
+        Returns
+        -------
+        The noise.
+
+        """
+        return super().run().upper()
+```
+
+**✅ Good**
+
+```py
+import abc
+
+class Animal(abc.ABC):
+
+    @abc.abstractmethod
+    def sound(self) -> str:
+        """Make some noise.
+
+        Returns
+        -------
+        The noise.
+
+        """
+
+class Dog(Animal):
+
+    def sound(self):
+        return super().run().upper()
 ```
 
 ## Alternatives
