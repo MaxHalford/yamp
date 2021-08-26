@@ -99,7 +99,7 @@ class Dog(Animal):
         The noise.
 
         """
-        return super().run().upper()
+        return "woof woof"
 ```
 
 **✅ Good**
