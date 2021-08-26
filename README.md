@@ -122,7 +122,7 @@ class Animal(abc.ABC):
 class Dog(Animal):
 
     def sound(self):
-        return super().run().upper()
+        return "woof woof"
 ```
 
 ## Alternatives
