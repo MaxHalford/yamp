@@ -19,13 +19,14 @@ from yamp import utils
 
 
 class Linkifier:
-    def __init__(self):
+    def __init__(self, library):
+        self.library = library
 
         path_index = {}
         name_index = {}
 
         modules = dict(
-            inspect.getmembers(importlib.import_module("river"), inspect.ismodule)
+            inspect.getmembers(importlib.import_module(library), inspect.ismodule)
         )
         modules = {
             "base": modules["base"],
@@ -70,11 +71,11 @@ class Linkifier:
         for mod_name, mod in modules.items():
             index_module(mod_name, mod, path="")
 
-        # Prepend river to each index entry
+        # Prepend the name of the library to each index entry
         for k in list(path_index.keys()):
-            path_index[f"river.{k}"] = path_index[k]
+            path_index[f"{self.library}.{k}"] = path_index[k]
         for k in list(name_index.keys()):
-            name_index[f"river.{k}"] = name_index[k]
+            name_index[f"{self.library}.{k}"] = name_index[k]
 
         self.path_index = path_index
         self.name_index = name_index
@@ -384,7 +385,7 @@ def print_library(library: str, output_dir: pathlib.Path, verbose=False):
     overview = open(output_dir.joinpath("overview.md"), "w")
     print(md.h1("Overview"), file=overview)
 
-    linkifier = Linkifier()
+    linkifier = Linkifier(library)
 
     for mod_name, mod in inspect.getmembers(
         importlib.import_module(library), inspect.ismodule
