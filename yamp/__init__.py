@@ -363,12 +363,17 @@ def print_module(mod, path, overview, linkifier, is_submodule=False, verbose=Fal
             or name.startswith("_")
         ):
             continue
+
+        if verbose:
+            print(f"{mod_name}.{name}")
+
         print_module(
             mod=submod,
             path=mod_path,
             overview=overview,
             linkifier=linkifier,
             is_submodule=True,
+            verbose=verbose
         )
 
     print("", file=overview)
