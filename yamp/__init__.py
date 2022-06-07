@@ -385,7 +385,7 @@ def print_library(library: str, output_dir: pathlib.Path, verbose=False):
     shutil.rmtree(output_dir, ignore_errors=True)
     os.makedirs(output_dir, exist_ok=True)
     with open(output_dir.joinpath(".pages"), "w") as f:
-        f.write("title: API reference\narrange:\n  - overview.md\n  - ...\n")
+        f.write("title: API reference 📚\narrange:\n  - overview.md\n  - ...\n")
 
     overview = open(output_dir.joinpath("overview.md"), "w")
     print(md.h1("Overview"), file=overview)
