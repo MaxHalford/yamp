@@ -25,9 +25,15 @@ class Linkifier:
         path_index = {}
         name_index = {}
 
+        # Either modules are defined in the module's __init__.py...
         modules = dict(
             inspect.getmembers(importlib.import_module(library), inspect.ismodule)
         )
+        # ... either they're defined in an api.py file
+        modules.update(dict(
+            inspect.getmembers(importlib.import_module(f"{library}.api"), inspect.ismodule)
+        ))
+
         modules = {
             "base": modules["base"],
             "linear_model": modules["linear_model"],
