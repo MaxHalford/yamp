@@ -214,6 +214,9 @@ def print_docstring(obj, file, depth, linkifier):
 
         for meth in doc["Methods"]:
 
+            if meth.name in {"clone", "get_params", "set_params"}:
+                continue
+
             printf(md.line(f'???- note "{meth.name}"'))
 
             # Parse method docstring
