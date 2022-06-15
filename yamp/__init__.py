@@ -387,7 +387,6 @@ def print_module(mod, path, overview, linkifier, is_submodule=False, verbose=Fal
 
     print("", file=overview)
 
-
 def print_library(library: str, output_dir: pathlib.Path, verbose=False):
 
     # Create a directory for the API reference
