@@ -404,7 +404,7 @@ def print_library(library: str, output_dir: pathlib.Path, verbose=False):
     for mod_name, mod in inspect.getmembers(
         importlib.import_module(library), inspect.ismodule
     ):
-        if mod_name.startswith("_"):
+        if mod_name.startswith("_") or mod_name == "api":
             continue
         if verbose:
             print(mod_name)
