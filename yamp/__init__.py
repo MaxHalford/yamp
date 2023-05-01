@@ -4,6 +4,7 @@ the __doc__ of each object and formats it so that MkDocs can process it in turn.
 
 """
 import argparse
+import doctest
 import functools
 import importlib
 import inspect
@@ -30,16 +31,13 @@ class Linkifier:
             inspect.getmembers(importlib.import_module(library), inspect.ismodule)
         )
         # ... either they're defined in an api.py file
-        modules.update(dict(
-            inspect.getmembers(importlib.import_module(f"{library}.api"), inspect.ismodule)
-        ))
-
-        modules = {
-            "base": modules["base"],
-            "linear_model": modules["linear_model"],
-            "stream": modules["stream"],
-            "optim": modules["optim"],
-        }
+        modules.update(
+            dict(
+                inspect.getmembers(
+                    importlib.import_module(f"{library}.api"), inspect.ismodule
+                )
+            )
+        )
 
         def index_module(mod_name, mod, path):
             path = os.path.join(path, mod_name)
@@ -177,34 +175,42 @@ def print_docstring(obj, file, depth, linkifier):
     if doc["Examples"]:
         printf(md.h2("Examples"))
 
+        parser = doctest.DocTestParser()
+        lines = parser.parse(inspect.cleandoc("\n".join(doc["Examples"])))
         in_code = False
-        after_space = False
 
-        for line in inspect.cleandoc("\n".join(doc["Examples"])).splitlines():
+        for line in lines:
 
-            if (
-                in_code
-                and after_space
-                and line
-                and not line.startswith(">>>")
-                and not line.startswith("...")
-            ):
-                printf("```\n")
+            if isinstance(line, doctest.Example):
+                example = line
+
+                # Start code fences for new examples
+                if not in_code:
+                    printf("```python")
+                    in_code = True
+
+                printf(example.source, end="")
+                if example.want:
+                    # Close code fences for example source
+                    printf("```")
+                    # Enclose the output in code fences
+                    printf("```")
+                    printf(example.want, end="")
+                    printf("```")
+                    in_code = False
+
+            elif text := line:
+                # Close code fences for example source
+                if in_code and text.strip():
+                    printf("```")
+                    in_code = False
+                printf(linkifier.linkify_fences(text, depth), end="")
+        else:
+            # Close code fences for example source
+            if in_code:
+                printf("```")
                 in_code = False
-                after_space = False
 
-            if not in_code and line.startswith(">>>"):
-                printf("```python")
-                in_code = True
-
-            after_space = False
-            if not line:
-                after_space = True
-
-            printf(line)
-
-        if in_code:
-            printf("```")
     printf("")
 
     # Methods
@@ -217,7 +223,7 @@ def print_docstring(obj, file, depth, linkifier):
             if meth.name in {"clone", "mutate"}:
                 continue
 
-            printf(md.line(f'???- note "{meth.name}"'))
+            printf(md.line(f'???- example "{meth.name}"'))
 
             # Parse method docstring
             docstring = utils.find_method_docstring(klass=obj, method=meth.name)
@@ -275,6 +281,9 @@ def print_docstring(obj, file, depth, linkifier):
                 printf_indent(return_val.type)
                 printf_indent("")
 
+            # Add a space between methods
+            printf("<span />")
+
     # Notes
     if doc["Notes"]:
         printf(md.h2("Notes"))
@@ -282,7 +291,6 @@ def print_docstring(obj, file, depth, linkifier):
 
     # References
     if doc["References"]:
-        printf(md.h2("References"))
         printf(md.line("\n".join(doc["References"])))
 
 
@@ -304,7 +312,8 @@ def print_module(mod, path, overview, linkifier, is_submodule=False, verbose=Fal
     else:
         print(md.h2(mod_name), file=overview)
     if mod.__doc__:
-        print(md.line(mod.__doc__), file=overview)
+        doc = linkifier.linkify_fences(mod.__doc__, depth=1)
+        print(md.line(doc), file=overview)
 
     # Extract all public classes and functions
     ispublic = lambda x: x.__name__ in mod.__all__ and not x.__name__.startswith("_")
@@ -382,10 +391,11 @@ def print_module(mod, path, overview, linkifier, is_submodule=False, verbose=Fal
             overview=overview,
             linkifier=linkifier,
             is_submodule=True,
-            verbose=verbose
+            verbose=verbose,
         )
 
     print("", file=overview)
+
 
 def print_library(library: str, output_dir: pathlib.Path, verbose=False):
 
@@ -393,7 +403,7 @@ def print_library(library: str, output_dir: pathlib.Path, verbose=False):
     shutil.rmtree(output_dir, ignore_errors=True)
     os.makedirs(output_dir, exist_ok=True)
     with open(output_dir.joinpath(".pages"), "w") as f:
-        f.write("title: API reference 📚\narrange:\n  - overview.md\n  - ...\n")
+        f.write("title: API reference 🍱\narrange:\n  - overview.md\n  - ...\n")
 
     overview = open(output_dir.joinpath("overview.md"), "w")
     print(md.h1("Overview"), file=overview)

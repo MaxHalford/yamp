@@ -1,9 +1,17 @@
 # yamp
+
 ## Motivation
 
-You want to document your project. You make an effort and write docstrings. You try Sphinx. You think it sucks and it's slow -- I did. You now want to use ([Material for](https://squidfunk.github.io/mkdocs-material/)) [MkDocs](https://www.mkdocs.org/). You realize it only does rendering and does not parse docstrings. You need some glue in between. This is it.
+You want to document your project. You make an effort and write docstrings. You try Sphinx. You think it sucks and it's slow — I did. You now want to use ([Material for](https://squidfunk.github.io/mkdocs-material/)) [MkDocs](https://www.mkdocs.org/). You realize it only does rendering and does not parse docstrings. You need some glue in between. This is it.
 
-This is yamp: Yet Another MkDocs Parser. It's opinionated and makes decisions for you. It's what we use to produce the [documentation](https://riverml.xyz/latest/) for [River](https://github.com/online-ml/river/).
+This is yamp: Yet Another MkDocs Parser. It's opinionated and makes decisions for you. As an example, it's used to produce the [documentation](https://riverml.xyz/latest/) for [River](https://github.com/online-ml/river/).
+
+## Features
+
+- Docstring inheritance — methods inherit docstrings from their parent(s)
+- Type annotation friendly — no need to specify parameter types in docstrings if they're already type annotated
+- Automatic linking — class and function mentions are automatically replaced with a link
+- Pretty doctests — `>>>` and `...` are automatically removed from doctests
 
 ## Installation
 
@@ -24,9 +32,10 @@ yamp river --out docs/api
 This will parse all the modules, classes, and docstrings and dump them in a format that MkDocs understands. Typically, you would run this before calling `mkdocs build`.
 
 Naturally, you can run `yamp -h` to see what options are available.
+
 ## Style guide
 
-As a general rule, the docstrings are expected the `numpydoc style guide`. There are just a few extra rules to take into account.
+As a general rule, the docstrings are expected to follow the [numpydoc style guide](https://numpydoc.readthedocs.io/en/latest/format.html). There are just a few extra rules to take into account.
 
 For examples, you may look at [River's source code](https://github.com/online-ml/river/tree/master/river) and check the docstrings therein.
 
