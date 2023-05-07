@@ -20,11 +20,13 @@ from yamp import utils
 
 
 class Linkifier:
+    PATTERN = re.compile(r"`?(\w+\.)+\w+`?")
+
     def __init__(self, library):
         self.library = library
 
         path_index = {}
-        name_index = {}
+        rename_index = {}
 
         # Either modules are defined in the module's __init__.py...
         modules = dict(
@@ -50,7 +52,7 @@ class Linkifier:
                     f"{func.__module__}.{func_name}",
                 ):
                     path_index[e] = os.path.join(path, utils.snake_to_kebab(func_name))
-                    name_index[e] = f"{dotted_path}.{func_name}"
+                    rename_index[e] = f"{dotted_path}.{func_name}"
 
             for klass_name, klass in inspect.getmembers(mod, inspect.isclass):
                 for e in (
@@ -59,7 +61,7 @@ class Linkifier:
                     f"{klass.__module__}.{klass_name}",
                 ):
                     path_index[e] = os.path.join(path, klass_name)
-                    name_index[e] = f"{dotted_path}.{klass_name}"
+                    rename_index[e] = f"{dotted_path}.{klass_name}"
 
             for submod_name, submod in inspect.getmembers(mod, inspect.ismodule):
                 if submod_name not in mod.__all__ or submod_name == "typing":
@@ -78,40 +80,33 @@ class Linkifier:
         # Prepend the name of the library to each index entry
         for k in list(path_index.keys()):
             path_index[f"{self.library}.{k}"] = path_index[k]
-        for k in list(name_index.keys()):
-            name_index[f"{self.library}.{k}"] = name_index[k]
+        for k in list(rename_index.keys()):
+            rename_index[f"{self.library}.{k}"] = rename_index[k]
+
+        # HACK: replace underscores with dashes in links
+        for k, v in path_index.items():
+            path_index[k] = v.replace("_", "-")
 
         self.path_index = path_index
-        self.name_index = name_index
+        self.rename_index = rename_index
 
-    def linkify(self, text, use_fences, depth):
-        path = self.path_index.get(text)
-        name = self.name_index.get(text)
-        if path and name:
-            backwards = "../" * (depth + 1)
-            if use_fences:
-                return f"[`{name}`]({backwards}{path})"
-            return f"[{name}]({backwards}{path})"
-        return None
+    def linkify(self, text):
+        def replace(x):
+            y = x.group().strip("`")
+            if path := self.path_index.get(y):
+                name = self.rename_index.get(y, y)
+                name = f"`{name}`'" if x.group().startswith("`") else name
+                return f"[{name}](/api/{path})"
+            return x.group()
 
-    def linkify_fences(self, text, depth):
-        between_fences = re.compile(r"`[\w\.]+\.\w+`")
-        return between_fences.sub(
-            lambda x: self.linkify(x.group().strip("`"), True, depth) or x.group(), text
-        )
-
-    def linkify_dotted(self, text, depth):
-        dotted = re.compile(r"\w+\.[\.\w]+")
-        return dotted.sub(
-            lambda x: self.linkify(x.group(), False, depth) or x.group(), text
-        )
+        return self.PATTERN.sub(replace, text)
 
 
 def concat_lines(lines):
     return inspect.cleandoc(" ".join("\n\n" if line == "" else line for line in lines))
 
 
-def print_docstring(obj, file, depth, linkifier):
+def print_docstring(obj, file):
     """Prints a classes's docstring to a file."""
 
     doc = ClassDoc(obj) if inspect.isclass(obj) else FunctionDoc(obj)
@@ -119,10 +114,8 @@ def print_docstring(obj, file, depth, linkifier):
     printf = functools.partial(print, file=file)
 
     printf(md.h1(obj.__name__))
-    printf(linkifier.linkify_fences(md.line(concat_lines(doc["Summary"])), depth))
-    printf(
-        linkifier.linkify_fences(md.line(concat_lines(doc["Extended Summary"])), depth)
-    )
+    printf(md.line(concat_lines(doc["Summary"])))
+    printf(md.line(concat_lines(doc["Extended Summary"])))
 
     # We infer the type annotations from the signatures, and therefore rely on the signature
     # instead of the docstring for documenting parameters
@@ -143,11 +136,10 @@ def print_docstring(obj, file, depth, linkifier):
         # Type annotation
         if param.annotation is not param.empty:
             anno = inspect.formatannotation(param.annotation)
-            anno = linkifier.linkify_dotted(anno, depth)
-            printf(f" (*{anno}*)", end="")
+            printf(f" — *{anno}*", end="")
         # Default value
         if param.default is not param.empty:
-            printf(f" – defaults to `{param.default}`", end="")
+            printf(f" — defaults to `{param.default}`", end="")
         printf("\n", file=file)
         # Description
         desc = params_desc[param.name]
@@ -204,7 +196,7 @@ def print_docstring(obj, file, depth, linkifier):
                 if in_code and text.strip():
                     printf("```")
                     in_code = False
-                printf(linkifier.linkify_fences(text, depth), end="")
+                printf(text, end="")
         else:
             # Close code fences for example source
             if in_code:
@@ -255,11 +247,11 @@ def print_docstring(obj, file, depth, linkifier):
                 # Type annotation
                 if param.annotation is not param.empty:
                     printf_indent(
-                        f" (*{inspect.formatannotation(param.annotation)}*)", end=""
+                        f" — *{inspect.formatannotation(param.annotation)}*", end=""
                     )
                 # Default value
                 if param.default is not param.empty:
-                    printf_indent(f" – defaults to `{param.default}`", end="")
+                    printf_indent(f" — defaults to `{param.default}`", end="")
                 printf_indent("", file=file)
                 # Description
                 desc = params_desc.get(param.name)
@@ -294,7 +286,7 @@ def print_docstring(obj, file, depth, linkifier):
         printf(md.line("\n".join(doc["References"])))
 
 
-def print_module(mod, path, overview, linkifier, is_submodule=False, verbose=False):
+def print_module(mod, path, overview, is_submodule=False, verbose=False):
 
     mod_name = mod.__name__.split(".")[-1]
 
@@ -312,8 +304,7 @@ def print_module(mod, path, overview, linkifier, is_submodule=False, verbose=Fal
     else:
         print(md.h2(mod_name), file=overview)
     if mod.__doc__:
-        doc = linkifier.linkify_fences(mod.__doc__, depth=1)
-        print(md.line(doc), file=overview)
+        print(md.line(mod.__doc__), file=overview)
 
     # Extract all public classes and functions
     ispublic = lambda x: x.__name__ in mod.__all__ and not x.__name__.startswith("_")
@@ -322,55 +313,48 @@ def print_module(mod, path, overview, linkifier, is_submodule=False, verbose=Fal
 
     # Classes
 
-    if classes and funcs:
-        print("\n**Classes**\n", file=overview)
+    if hasattr(mod, "_docs_overview"):
+        mod._docs_overview(functools.partial(print, file=overview))
+    else:
+        if classes and funcs:
+            print("\n**Classes**\n", file=overview)
 
-    for _, c in classes:
-        if verbose:
-            print(f"{mod_name}.{c.__name__}")
+        for _, c in classes:
+            if verbose:
+                print(f"{mod_name}.{c.__name__}")
 
-        # Add the class to the overview
-        slug = utils.snake_to_kebab(c.__name__)
-        print(
-            md.li(md.link(c.__name__, f"../{mod_short_path}/{slug}")),
-            end="",
-            file=overview,
-        )
-
-        # Write down the class' docstring
-        with open(mod_path.joinpath(slug).with_suffix(".md"), "w") as file:
-            print_docstring(
-                obj=c,
-                file=file,
-                linkifier=linkifier,
-                depth=mod_short_path.count("/") + 1,
+            # Add the class to the overview
+            slug = utils.snake_to_kebab(c.__name__)
+            print(
+                md.li(md.link(c.__name__, f"../{mod_short_path}/{slug}")),
+                end="",
+                file=overview,
             )
 
-    # Functions
+            # Write down the class' docstring
+            with open(mod_path.joinpath(slug).with_suffix(".md"), "w") as file:
+                print_docstring(obj=c, file=file)
 
-    if classes and funcs:
-        print("\n**Functions**\n", file=overview)
+        # Functions
 
-    for _, f in funcs:
-        if verbose:
-            print(f"{mod_name}.{f.__name__}")
+        if classes and funcs:
+            print("\n**Functions**\n", file=overview)
 
-        # Add the function to the overview
-        slug = utils.snake_to_kebab(f.__name__)
-        print(
-            md.li(md.link(f.__name__, f"../{mod_short_path}/{slug}")),
-            end="",
-            file=overview,
-        )
+        for _, f in funcs:
+            if verbose:
+                print(f"{mod_name}.{f.__name__}")
 
-        # Write down the function' docstring
-        with open(mod_path.joinpath(slug).with_suffix(".md"), "w") as file:
-            print_docstring(
-                obj=f,
-                file=file,
-                linkifier=linkifier,
-                depth=mod_short_path.count(".") + 1,
+            # Add the function to the overview
+            slug = utils.snake_to_kebab(f.__name__)
+            print(
+                md.li(md.link(f.__name__, f"../{mod_short_path}/{slug}")),
+                end="",
+                file=overview,
             )
+
+            # Write down the function' docstring
+            with open(mod_path.joinpath(slug).with_suffix(".md"), "w") as file:
+                print_docstring(obj=f, file=file)
 
     # Sub-modules
     for name, submod in inspect.getmembers(mod, inspect.ismodule):
@@ -389,7 +373,6 @@ def print_module(mod, path, overview, linkifier, is_submodule=False, verbose=Fal
             mod=submod,
             path=mod_path,
             overview=overview,
-            linkifier=linkifier,
             is_submodule=True,
             verbose=verbose,
         )
@@ -408,36 +391,55 @@ def print_library(library: str, output_dir: pathlib.Path, verbose=False):
     overview = open(output_dir.joinpath("overview.md"), "w")
     print(md.h1("Overview"), file=overview)
 
-    linkifier = Linkifier(library)
-
     for mod_name, mod in inspect.getmembers(
-        importlib.import_module(library), inspect.ismodule
+        importlib.import_module(f"{library}.api"), inspect.ismodule
     ):
         if mod_name.startswith("_") or mod_name == "api":
             continue
         if verbose:
             print(mod_name)
-        print_module(
-            mod,
-            path=output_dir,
-            overview=overview,
-            linkifier=linkifier,
-            verbose=verbose,
-        )
+        print_module(mod, path=output_dir, overview=overview, verbose=verbose)
+
+
+def linkify_docs(library: str, docs_dir: pathlib.Path, verbose=False):
+
+    shutil.rmtree(docs_dir.joinpath("linkified"), ignore_errors=True)
+    shutil.copytree(
+        src=docs_dir, dst=docs_dir.joinpath("linkified"), dirs_exist_ok=True
+    )
+    linkifier = Linkifier(library=library)
+
+    for page in docs_dir.glob("**/*.md"):
+
+        # Ignore files in the linkified directory
+        if str(page).startswith("docs/linkified"):
+            continue
+
+        if verbose:
+            print(f"Adding links to {page}")
+
+        # Linkify text
+        text = page.read_text()
+        text = linkifier.linkify(text)
+
+        # Write back text to file
+        linkified_page = pathlib.Path(str(page).replace("docs/", "docs/linkified/"))
+        linkified_page.write_text(text)
 
 
 def cli_hook():
     """Command-line interface."""
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "library",
-        nargs="?",
-        help="the library to document",
-    )
-    parser.add_argument("--out", default="docs/api", help="where to dump the docs")
+    parser.add_argument("library", nargs="?", help="the library to document")
+    parser.add_argument("--out", default="docs", help="where to dump the docs")
     parser.add_argument("--verbose", dest="verbose", action="store_true")
     parser.set_defaults(verbose=False)
     args = parser.parse_args()
     print_library(
-        library=args.library, output_dir=pathlib.Path(args.out), verbose=args.verbose
+        library=args.library,
+        output_dir=pathlib.Path(args.out) / "api",
+        verbose=args.verbose,
+    )
+    linkify_docs(
+        library=args.library, docs_dir=pathlib.Path(args.out), verbose=args.verbose
     )
