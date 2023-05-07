@@ -92,10 +92,19 @@ class Linkifier:
 
     def linkify(self, text):
         def replace(x):
+
+            # HACK
+            if "collections" in x.group():
+                return x.group()
+
+            if text.count("```", 0, x.start()) % 2 == 1:
+                return x.group()
+
             y = x.group().strip("`")
             if path := self.path_index.get(y):
                 name = self.rename_index.get(y, y)
                 name = f"`{name}`'" if x.group().startswith("`") else name
+                name = name.strip("'")
                 return f"[{name}](/api/{path})"
             return x.group()
 
@@ -103,7 +112,13 @@ class Linkifier:
 
 
 def concat_lines(lines):
-    return inspect.cleandoc(" ".join("\n\n" if line == "" else line for line in lines))
+    return inspect.cleandoc(
+        " ".join(
+            # Either empty space or list item
+            f"{line}\n\n" if (line == "") or (line.strip().startswith("-")) else line
+            for line in lines
+        )
+    )
 
 
 def print_docstring(obj, file):
@@ -132,14 +147,15 @@ def print_docstring(obj, file):
         printf(md.h2("Parameters"))
     for param in signature.parameters.values():
         # Name
-        printf(f"- **{param.name}**", end="")
+        printf(f"- **{param.name}**\n")
         # Type annotation
         if param.annotation is not param.empty:
             anno = inspect.formatannotation(param.annotation)
-            printf(f" — *{anno}*", end="")
+            anno = anno.strip("'")
+            printf(f"     *Type* → *{anno}*\n")
         # Default value
         if param.default is not param.empty:
-            printf(f" — defaults to `{param.default}`", end="")
+            printf(f"     *Default* → `{param.default}`\n")
         printf("\n", file=file)
         # Description
         desc = params_desc[param.name]
@@ -205,6 +221,9 @@ def print_docstring(obj, file):
 
     printf("")
 
+    import river.base
+    import river.ensemble
+
     # Methods
     if inspect.isclass(obj) and doc["Methods"]:
         printf(md.h2("Methods"))
@@ -212,10 +231,37 @@ def print_docstring(obj, file):
 
         for meth in doc["Methods"]:
 
-            if meth.name in {"clone", "mutate"}:
+            base_method_names = {"clone", "mutate"}
+
+            if (
+                issubclass(obj, river.base.Base)
+                and not obj is river.base.Base
+                and meth.name in base_method_names
+            ):
                 continue
 
-            printf(md.line(f'???- example "{meth.name}"'))
+            ensemble_method_names = {
+                "append",
+                "clear",
+                "copy",
+                "count",
+                "extend",
+                "index",
+                "insert",
+                "pop",
+                "remove",
+                "reverse",
+                "sort",
+            }
+
+            if (
+                issubclass(obj, river.base.Ensemble)
+                and not obj is river.base.Ensemble
+                and meth.name in ensemble_method_names
+            ):
+                continue
+
+            printf(md.line(f'???- abstract "{meth.name}"'))
 
             # Parse method docstring
             docstring = utils.find_method_docstring(klass=obj, method=meth.name)
@@ -410,6 +456,9 @@ def linkify_docs(library: str, docs_dir: pathlib.Path, verbose=False):
     linkifier = Linkifier(library=library)
 
     for page in docs_dir.glob("**/*.md"):
+
+        if "benchmarks" in str(page):
+            continue
 
         # Ignore files in the linkified directory
         if str(page).startswith("docs/linkified"):
