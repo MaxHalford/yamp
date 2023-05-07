@@ -457,19 +457,16 @@ def linkify_docs(library: str, docs_dir: pathlib.Path, verbose=False):
 
     for page in docs_dir.glob("**/*.md"):
 
-        if "benchmarks" in str(page):
-            continue
-
         # Ignore files in the linkified directory
         if str(page).startswith("docs/linkified"):
             continue
 
-        if verbose:
-            print(f"Adding links to {page}")
-
-        # Linkify text
         text = page.read_text()
-        text = linkifier.linkify(text)
+
+        if "benchmarks" not in str(page):
+            if verbose:
+                print(f"Adding links to {page}")
+            text = linkifier.linkify(text)
 
         # Write back text to file
         linkified_page = pathlib.Path(str(page).replace("docs/", "docs/linkified/"))
